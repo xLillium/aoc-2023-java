@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 public class Day2 {
 
@@ -40,47 +43,49 @@ public class Day2 {
     }
 
     private static int computeSetPower(String game) {
-        String[] gameRounds = game.split(":")[1].split(";");
-        int fewestRedRequired = 0;
-        int fewestGreenRequired = 0;
-        int fewestBlueRequired = 0;
+        final int[] fewestRedRequired = {0};
+        final int[] fewestGreenRequired = {0};
+        final int[] fewestBlueRequired = {0};
 
-        for (String gameRound : gameRounds) {
-            String[] picks = gameRound.split(",");
-            for (String pick : picks) {
-                String[] pickData = pick.trim().split(" ");
-                int number = Integer.parseInt(pickData[0]);
-                String color = pickData[1];
-                switch (color) {
-                    case RED:
-                        fewestRedRequired = Math.max(fewestRedRequired, number);
-                        break;
-                    case GREEN:
-                        fewestGreenRequired = Math.max(fewestGreenRequired, number);
-                        break;
-                    case BLUE:
-                        fewestBlueRequired = Math.max(fewestBlueRequired, number);
-                        break;
-                    default:
-                        throw new RuntimeException("Unknown color : " + color);
-                }
+        processGameRounds(game, pick -> {
+            String[] pickData = pick.split(" ");
+            int number = Integer.parseInt(pickData[0]);
+            String color = pickData[1];
+            switch (color) {
+                case RED:
+                    fewestRedRequired[0] = Math.max(fewestRedRequired[0], number);
+                    break;
+                case GREEN:
+                    fewestGreenRequired[0] = Math.max(fewestGreenRequired[0], number);
+                    break;
+                case BLUE:
+                    fewestBlueRequired[0] = Math.max(fewestBlueRequired[0], number);
+                    break;
+                default:
+                    throw new RuntimeException("Unknown color : " + color);
             }
+        });
+
+        return fewestRedRequired[0] * fewestGreenRequired[0] * fewestBlueRequired[0];
+    }
+
+    private static void processGameRounds(String game, Consumer<String> pickProcessor) {
+        String[] gameRounds = game.split(":")[1].split(";");
+        for (String gameRound : gameRounds) {
+            Arrays.stream(gameRound.split(","))
+                    .forEach(pick -> pickProcessor.accept(pick.trim()));
         }
-        return fewestRedRequired * fewestGreenRequired * fewestBlueRequired;
     }
 
 
     private static boolean isValidGame(String game) {
-        String[] gameRounds = game.split(":")[1].split(";");
-        for (String gameRound : gameRounds) {
-            String[] picks = gameRound.split(",");
-            for (String pick : picks) {
-                if (!isValidPick(pick.trim())) {
-                    return false;
-                }
+        final AtomicBoolean isValid = new AtomicBoolean(true);
+        processGameRounds(game, pick -> {
+            if (!isValidPick(pick)) {
+                isValid.set(false);
             }
-        }
-        return true;
+        });
+        return isValid.get();
     }
 
     private static boolean isValidPick(String pick) {
